@@ -68,11 +68,12 @@ function initShaders() {
     shaderProgram.vertexPositionAttribute = gl.getAttribLocation(shaderProgram, "aVertexPosition");
     gl.enableVertexAttribArray(shaderProgram.vertexPositionAttribute);
 
-    shaderProgram.vertexColorAttribute = gl.getAttribLocation(shaderProgram, "aVertexColor");
-    gl.enableVertexAttribArray(shaderProgram.vertexColorAttribute);
+    shaderProgram.textureCoordAttribute = gl.getAttribLocation(shaderProgram, "aTextureCoord");
+    gl.enableVertexAttribArray(shaderProgram.textureCoordAttribute);
 
     shaderProgram.pMatrixUniform = gl.getUniformLocation(shaderProgram, "uPMatrix");
     shaderProgram.mvMatrixUniform = gl.getUniformLocation(shaderProgram, "uMVMatrix");
+    shaderProgram.samplerUniform = gl.getUniformLocation(shaderProgram, "uSampler");
 }
 
 
@@ -89,57 +90,37 @@ function setMatrixUniforms() {
 var pyramidVertexPositionBuffer;
 var pyramidVertexColorBuffer;
 var cubeVertexPositionBuffer;
-var cubeVertexColorBuffer;
+var cubeVertexTextureBuffer;
 var cubeVertexIndexBuffer;
 
-function initBuffers() {
-    pyramidVertexPositionBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, pyramidVertexPositionBuffer);
-    var vertices = [
-        // Front face
-        0.0, 1.0, 0.0,
-        -1.0, -1.0, 1.0,
-        1.0, -1.0, 1.0,
-        // Right face
-        0.0, 1.0, 0.0,
-        1.0, -1.0, 1.0,
-        1.0, -1.0, -1.0,
-        // Back face
-        0.0, 1.0, 0.0,
-        1.0, -1.0, -1.0,
-        -1.0, -1.0, -1.0,
-        // Left face
-        0.0, 1.0, 0.0,
-        -1.0, -1.0, -1.0,
-        -1.0, -1.0, 1.0
-    ];
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
-    pyramidVertexPositionBuffer.itemSize = 3;
-    pyramidVertexPositionBuffer.numItems = 12;
+var imageTexture;
+function initTextures() {
+    imageTexture = gl.createTexture();
+    imageTexture.image = new Image();
+    imageTexture.image.onload = function () {
+        handleImageTexture(imageTexture);
+    }
+    imageTexture.image.src = 'nehe.gif';
+}
 
-    pyramidVertexColorBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, pyramidVertexColorBuffer);
-    var colors = [
-        // Front face
-        1.0, 0.0, 0.0, 1.0,
-        0.0, 1.0, 0.0, 1.0,
-        0.0, 0.0, 1.0, 1.0,
-        // Right face
-        1.0, 0.0, 0.0, 1.0,
-        0.0, 0.0, 1.0, 1.0,
-        0.0, 1.0, 0.0, 1.0,
-        // Back face
-        1.0, 0.0, 0.0, 1.0,
-        0.0, 1.0, 0.0, 1.0,
-        0.0, 0.0, 1.0, 1.0,
-        // Left face
-        1.0, 0.0, 0.0, 1.0,
-        0.0, 0.0, 1.0, 1.0,
-        0.0, 1.0, 0.0, 1.0
-    ];
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
-    pyramidVertexColorBuffer.itemSize = 4;
-    pyramidVertexColorBuffer.numItems = 12;
+function handleImageTexture(texture) {
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, texture.image);
+    if (isPowerOf2(texture.image.width) && isPowerOf2(texture.image.height)) {
+        gl.generateMipmap(gl.TEXTURE_2D);
+    } else {
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+    }
+    gl.bindTexture(gl.TEXTURE_2D, null);
+}
+
+function isPowerOf2(value) {
+    return (value & (value - 1)) == 0;
+}
+
+function initBuffers() {
 
     cubeVertexPositionBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexPositionBuffer);
@@ -179,26 +160,44 @@ function initBuffers() {
     cubeVertexPositionBuffer.itemSize = 3;
     cubeVertexPositionBuffer.numItems = 24;
 
-    cubeVertexColorBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexColorBuffer);
-    colors = [
-        [1.0, 0.0, 0.0, 1.0],// Front face
-        [1.0, 1.0, 0.0, 1.0],     // Back face
-        [0.0, 1.0, 0.0, 1.0],     // Top face
-        [1.0, 0.5, 0.5, 1.0],     // Bottom face
-        [1.0, 0.0, 1.0, 1.0],     // Right face
-        [0.0, 0.0, 1.0, 1.0],     // Left face
+    cubeVertexTextureBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexTextureBuffer);
+    var textureCoords = [
+        // Front face
+        0.0, 0.0,
+        1.0, 0.0,
+        1.0, 1.0,
+        0.0, 1.0,
+        // Back face
+        1.0, 0.0,
+        1.0, 1.0,
+        0.0, 1.0,
+        0.0, 0.0,
+        // Top face
+        0.0, 1.0,
+        0.0, 0.0,
+        1.0, 0.0,
+        1.0, 1.0,
+        // Bottom face
+        1.0, 1.0,
+        0.0, 1.0,
+        0.0, 0.0,
+        1.0, 0.0,
+        // Right face
+        1.0, 0.0,
+        1.0, 1.0,
+        0.0, 1.0,
+        0.0, 0.0,
+        // Left face
+        0.0, 0.0,
+        1.0, 0.0,
+        1.0, 1.0,
+        0.0, 1.0,
     ];
-    colorOutput = [];
-    for (var color in colors) {
-        for (var i = 0; i < 16; i++) {
-            colorOutput.push(colors[color][i%4]);
-        }
-    }
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colorOutput), gl.STATIC_DRAW);
-    
-    cubeVertexColorBuffer.itemSize = 4;
-    cubeVertexColorBuffer.numItems = 24;
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(textureCoords), gl.STATIC_DRAW);
+
+    cubeVertexTextureBuffer.itemSize = 2;
+    cubeVertexTextureBuffer.numItems = 24;
 
     cubeVertexIndexBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeVertexIndexBuffer);
@@ -215,8 +214,10 @@ function initBuffers() {
     cubeVertexIndexBuffer.numItems = 36;
 }
 
-var rPyramid = 0.0;
-var rCube = 0.0;
+var xRot = 0;
+var yRot = 0;
+var zRot = 0;
+
 function drawScene() {
     gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
@@ -225,60 +226,43 @@ function drawScene() {
 
     mat4.identity(mvMatrix);
 
-    mat4.translate(mvMatrix, [-1.5, 0.0, -7.0]);
-    mvPushMatrix();
-    mat4.rotate(mvMatrix, degToRad(rPyramid), [1, 0.7, 0]);
-    gl.bindBuffer(gl.ARRAY_BUFFER, pyramidVertexPositionBuffer);
-    gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, pyramidVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
+    mat4.translate(mvMatrix, [0.0, 0.0, -5.0]);
 
-    gl.bindBuffer(gl.ARRAY_BUFFER, pyramidVertexColorBuffer);
-    gl.vertexAttribPointer(shaderProgram.vertexColorAttribute, pyramidVertexColorBuffer.itemSize, gl.FLOAT, false, 0, 0);
+    mat4.rotate(mvMatrix, degToRad(xRot), [1, 0, 0]);
+    mat4.rotate(mvMatrix, degToRad(yRot), [0, 1, 0]);
+    mat4.rotate(mvMatrix, degToRad(zRot), [0, 0, 1]);
 
-    setMatrixUniforms();
-    gl.drawArrays(gl.TRIANGLES, 0, pyramidVertexPositionBuffer.numItems);
-    mvPopMatrix();
-
-    mat4.translate(mvMatrix, [2.0, 0.0, -1.0]);
-    mvPushMatrix();
-    mat4.rotate(mvMatrix, degToRad(rCube), [1, 0.3, 0.5]);
     gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexPositionBuffer);
     gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, cubeVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
 
-    gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexColorBuffer);
-    gl.vertexAttribPointer(shaderProgram.vertexColorAttribute, cubeVertexColorBuffer.itemSize, gl.FLOAT, false, 0, 0);
+    gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexTextureBuffer);
+    gl.vertexAttribPointer(shaderProgram.textureCoordAttribute, cubeVertexTextureBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, imageTexture);
+    gl.uniform1i(shaderProgram.samplerUniform, 0);
 
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeVertexIndexBuffer);
     setMatrixUniforms();
     gl.drawElements(gl.TRIANGLES, cubeVertexIndexBuffer.numItems, gl.UNSIGNED_SHORT, 0);
-    mvPopMatrix();
-}
-
-var mvMatrixStack = [];
-function mvPushMatrix() {
-    var copy = mat4.create();
-    mat4.set(mvMatrix, copy);
-    mvMatrixStack.push(copy);
-}
-
-function mvPopMatrix() {
-    mvMatrix = mvMatrixStack.pop();
 }
 
 function tick() {
-    //console.log('Drawing frame');
     requestAnimationFrame(tick);
     drawScene();
     animateScene();
 }
 
 var lastTime = 0.0;
+
 function animateScene() {
     var timeNow = new Date().getTime();
-    if (lastTime != 0.0) {
+    if (lastTime != 0) {
         var elapsed = timeNow - lastTime;
 
-        rPyramid += (90 * elapsed) / 1000.0;
-        rCube += (75 * elapsed) / 1000.0;
+        xRot += (90 * elapsed) / 1000.0;
+        yRot += (90 * elapsed) / 1000.0;
+        zRot += (90 * elapsed) / 1000.0;
     }
     lastTime = timeNow;
 }
@@ -288,11 +272,11 @@ function webGLStart() {
     initGL(canvas);
     initShaders();
     initBuffers();
+    initTextures();
 
     gl.clearColor(0.0, 0.0, 0.0, 1.0);
     gl.enable(gl.DEPTH_TEST);
 
-    //drawScene();
     tick();
 }
 
