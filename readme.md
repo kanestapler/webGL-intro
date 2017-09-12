@@ -1,3 +1,6 @@
+*Published at:*
+https://kanestapler.github.io/webGL-intro/
+
 ## Instructions to run locally
 
 Due to an issue with loading files inside webGL you can not simply open the `index.html`
