@@ -93,32 +93,42 @@ var cubeVertexPositionBuffer;
 var cubeVertexTextureBuffer;
 var cubeVertexIndexBuffer;
 
-var imageTexture;
+var differentTextures = Array();
 function initTextures() {
-    imageTexture = gl.createTexture();
-    imageTexture.image = new Image();
-    imageTexture.image.onload = function () {
-        handleImageTexture(imageTexture);
+    var crateImage = new Image();
+    for (var i = 0; i < 3; i++) {
+        var texture = gl.createTexture();
+        texture.image = crateImage;
+        differentTextures.push(texture);
     }
-    imageTexture.image.src = 'nehe.gif';
+    crateImage.onload = function () {
+        handleImageTexture(differentTextures);
+    }
+    crateImage.src = 'crate.gif';
 }
 
-function handleImageTexture(texture) {
-    gl.bindTexture(gl.TEXTURE_2D, texture);
+function handleImageTexture(textures) {
     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, texture.image);
-    if (isPowerOf2(texture.image.width) && isPowerOf2(texture.image.height)) {
-        gl.generateMipmap(gl.TEXTURE_2D);
-    } else {
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-    }
+
+    gl.bindTexture(gl.TEXTURE_2D, textures[0]);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, textures[0].image);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+
+    gl.bindTexture(gl.TEXTURE_2D, textures[1]);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, textures[1].image);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+
+    gl.bindTexture(gl.TEXTURE_2D, textures[2]);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, textures[2].image);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_NEAREST);
+    gl.generateMipmap(gl.TEXTURE_2D);
+
     gl.bindTexture(gl.TEXTURE_2D, null);
 }
 
-function isPowerOf2(value) {
-    return (value & (value - 1)) == 0;
-}
 
 function initBuffers() {
 
@@ -216,7 +226,10 @@ function initBuffers() {
 
 var xRot = 0;
 var yRot = 0;
-var zRot = 0;
+var xSpeed = 0;
+var ySpeed = 0;
+var z = -5.0;
+var filter = 0;
 
 function drawScene() {
     gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
@@ -226,11 +239,10 @@ function drawScene() {
 
     mat4.identity(mvMatrix);
 
-    mat4.translate(mvMatrix, [0.0, 0.0, -5.0]);
+    mat4.translate(mvMatrix, [0.0, 0.0, z]);
 
     mat4.rotate(mvMatrix, degToRad(xRot), [1, 0, 0]);
     mat4.rotate(mvMatrix, degToRad(yRot), [0, 1, 0]);
-    mat4.rotate(mvMatrix, degToRad(zRot), [0, 0, 1]);
 
     gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexPositionBuffer);
     gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, cubeVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
@@ -239,7 +251,7 @@ function drawScene() {
     gl.vertexAttribPointer(shaderProgram.textureCoordAttribute, cubeVertexTextureBuffer.itemSize, gl.FLOAT, false, 0, 0);
 
     gl.activeTexture(gl.TEXTURE0);
-    gl.bindTexture(gl.TEXTURE_2D, imageTexture);
+    gl.bindTexture(gl.TEXTURE_2D, differentTextures[filter]);
     gl.uniform1i(shaderProgram.samplerUniform, 0);
 
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeVertexIndexBuffer);
@@ -249,6 +261,7 @@ function drawScene() {
 
 function tick() {
     requestAnimationFrame(tick);
+    handleKeys();
     drawScene();
     animateScene();
 }
@@ -260,9 +273,8 @@ function animateScene() {
     if (lastTime != 0) {
         var elapsed = timeNow - lastTime;
 
-        xRot += (90 * elapsed) / 1000.0;
-        yRot += (90 * elapsed) / 1000.0;
-        zRot += (90 * elapsed) / 1000.0;
+        xRot += (xSpeed * elapsed) / 1000.0;
+        yRot += (ySpeed * elapsed) / 1000.0;
     }
     lastTime = timeNow;
 }
@@ -277,7 +289,53 @@ function webGLStart() {
     gl.clearColor(0.0, 0.0, 0.0, 1.0);
     gl.enable(gl.DEPTH_TEST);
 
+    document.onkeydown = keyDown;
+    document.onkeyup = keyUp;
+
     tick();
+}
+
+var keyStates = {};
+
+function keyDown(keyEvent) {
+    keyStates[keyEvent.keyCode] = true;
+    if (String.fromCharCode(keyEvent.keyCode) == 'F') {
+        filter += 1;
+        if (filter == 3) {
+            filter = 0;
+        }
+    }
+}
+
+function keyUp(keyEvent) {
+    keyStates[keyEvent.keyCode] = false;
+}
+
+function handleKeys() {
+    if (keyStates[33]) { // Page up
+        z -= 0.05;
+    }
+    if (keyStates[34]) { // Page down
+        z += 0.05;
+    }
+    if (keyStates[219]) { // Page up
+        z -= 0.05;
+    }
+    if (keyStates[221]) { // Page down
+        z += 0.05;
+    }
+    if (keyStates[37]) { // Left
+        ySpeed -= 1;
+    }
+    if (keyStates[39]) { // Right
+        ySpeed += 1;
+    }
+    if (keyStates[38]) { // Up
+        xSpeed -= 1;
+    }
+    if (keyStates[40]) { // Down
+        xSpeed += 1;
+    }
 }
 
 function degToRad(degrees) {
