@@ -10,3 +10,9 @@ Run:
 
 Then navigate to:
 `localhost:8000/your/local/directory/webGL-intro/index.html`
+
+All in one:
+* `git clone git@github.com:kanestapler/webGL-intro.git`
+* `cd webGL-intro`
+* `python -m SimpleHTTPServer`
+* Open browser to http://localhost:8000/
