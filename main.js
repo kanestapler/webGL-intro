@@ -82,6 +82,7 @@ function initShaders() {
     shaderProgram.ambientColorUniform = gl.getUniformLocation(shaderProgram, "uAmbientColor");
     shaderProgram.lightingDirectionUniform = gl.getUniformLocation(shaderProgram, "uLightingDirection");
     shaderProgram.directionalColorUniform = gl.getUniformLocation(shaderProgram, "uDirectionalColor");
+    shaderProgram.alphaUniform = gl.getUniformLocation(shaderProgram, "uAlpha");
 }
 
 
@@ -118,7 +119,7 @@ function initTextures() {
     crateImage.onload = function () {
         handleImageTexture(differentTextures);
     }
-    crateImage.src = 'crate.gif';
+    crateImage.src = 'glass.gif';
 }
 
 function handleImageTexture(textures) {
@@ -314,6 +315,18 @@ function drawScene() {
     gl.bindTexture(gl.TEXTURE_2D, differentTextures[filter]);
     //gl.bindTexture(gl.TEXTURE_2D, crateTexture);
     gl.uniform1i(shaderProgram.samplerUniform, 0);
+
+    var blending = document.getElementById('blending').checked;
+
+    if (blending) {
+        gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
+        gl.enable(gl.BLEND);
+        gl.disable(gl.DEPTH_TEST);
+        gl.uniform1f(shaderProgram.alphaUniform, parseFloat(document.getElementById("alpha").value));
+    } else {
+        gl.disable(gl.BLEND);
+        gl.enable(gl.DEPTH_TEST);
+    }
 
     var lighting = document.getElementById('lighting').checked;
     gl.uniform1i(shaderProgram.useLightingUniform, lighting);
